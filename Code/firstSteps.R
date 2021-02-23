@@ -1,1 +1,3 @@
-print("Hello World")
+require(data.table)
+
+print("Hello Anna")
