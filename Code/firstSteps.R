@@ -20,20 +20,53 @@ library(quantreg)
 library(tidyverse)
 library(ggplot2)
 library(gridExtra)
-
+library(naniar)
+library(UpSetR)
 
 source("./functions.R")
-#### Beispiel für Pipeline-Operationen #####
-# 
-# x <- -10:10
-# x %>% abs %>% sqrt %>% `[`(. != 0) %>% logb(base = 5) %>% round(digits = 2) %>%
-#   abs %>% c(1:3, ., 4:6) %>% cumsum %>% sum
 
-############################################
+data <- fread("./Data/house-prices-advanced-regression-techniques/train.csv")
+data_test <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
 
-data <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
 
-visualiseMissingData(data)
+############################################################################
+#################### VISUALISATION OF DATA #################################
+############################################################################
+
+visualizeMissingData(data)
+
+## get columns of type character with more than 10% missing data. 
+## In those cases create new category "ValueMissing"
+
+missing.values.percentage <- as.data.table(missinValuesPercentage(data))
+
+col_Missing_ge_10_pct <- missing.values.percentage[which(missing.values.percentage$pct >= 10 & missing.values.percentage$isna == T),]$key
+
+replaceNA(data)
+
+## get columns with missing values of type character and integer separately to prepare imputation
+
+data_classes <- sapply(data,class)
+
+col_replaced <- col_Missing_ge_10_pct[which(data_classes[col_Missing_ge_10_pct] == "character")]
+col_to_be_replaced <- setdiff(missing.values.percentage$key[which(missing.values.percentage$isna == TRUE)], col_replaced)
+
+col_Missing_integer <- unique(col_to_be_replaced[which(col_to_be_replaced %in% names(data)[sapply(data,is.integer)])])
+col_Missing_character <- unique(col_to_be_replaced[which(col_to_be_replaced %in% names(data)[sapply(data,is.character)])])
+
+
+## visualize patterns in missing data 
+
+data[,..col_Missing_integer] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_Missing_integer])))
+data[,..col_Missing_character] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_Missing_character])))
+
+
+
+
+############################################################################
+#################### VISUALISATION OF DATA #################################
+############################################################################
+
 
 data <- cleanData(data)
 
