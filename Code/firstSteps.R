@@ -22,11 +22,12 @@ library(ggplot2)
 library(gridExtra)
 library(naniar)
 library(UpSetR)
+library(corrplot)
 
 source("./functions.R")
 
 data <- fread("./Data/house-prices-advanced-regression-techniques/train.csv")
-data_test <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
+# data_test <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
 
 
 ############################################################################
@@ -51,25 +52,53 @@ data_classes <- sapply(data,class)
 col_replaced <- col_Missing_ge_10_pct[which(data_classes[col_Missing_ge_10_pct] == "character")]
 col_to_be_replaced <- setdiff(missing.values.percentage$key[which(missing.values.percentage$isna == TRUE)], col_replaced)
 
-col_Missing_integer <- unique(col_to_be_replaced[which(col_to_be_replaced %in% names(data)[sapply(data,is.integer)])])
-col_Missing_character <- unique(col_to_be_replaced[which(col_to_be_replaced %in% names(data)[sapply(data,is.character)])])
+col_int <- unique(names(data)[which(names(data) %in% names(data)[sapply(data,is.integer)])])
+col_char <- unique(names(data)[which(names(data) %in% names(data)[sapply(data,is.character)])])
 
 
 ## visualize patterns in missing data 
 
-data[,..col_Missing_integer] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_Missing_integer])))
-data[,..col_Missing_character] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_Missing_character])))
+data[,..col_to_be_replaced] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_to_be_replaced])))
 
+## After taking a look at the missing values it was decided to change all NA in coulmns concerning
+## garages, basements and Masonary Veneeers to "No garage", "No basement" and "No masonary veneer". 
+## All values of type integer will be set to 0, icluding "LotFrontage".
 
+col_garage <- c("GarageCond","GarageFinish","GarageQual","GarageType","GarageYrBlt")
+col_bsmt<- c("BsmtCond","BsmtFinType1","BsmtQual","BsmtExposure","BsmtFinType2")
+col_masVnr <- c("MasVnrArea","MasVnrType")
+col_electrical <- c("Electrical")
+col_LotFrontage <- c("LotFrontage")
 
+replaceNAinColumns(data,col_garage,"garage")
+replaceNAinColumns(data,col_bsmt,"basement")
+replaceNAinColumns(data,col_masVnr,"masonaryVeneer")
+replaceNAinColumns(data,col_electrical,"electrical")
+replaceNAinColumns(data,col_LotFrontage,"frontage")
 
+data_int <- data[,..col_int]
+data_char <- data[,..col_char]
+
+correlations_int <- cor(data_int)
+p_values_int <- cor.mtest(data_int)
+
+# visualize correlation matrix of integer values. Only highlight correlations with
+# p-value above 0.01. only usable after imputation of missing values
+
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+corrplot(correlations_int, method="color", col=col(200),  
+         type="upper", order="hclust", 
+         
+         tl.col="black", tl.srt=45, #Text label color and rotation
+         # Combine with significance
+         p.mat = p_values_int, sig.level = 0.01, insig = "blank", 
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+)
 ############################################################################
 #################### VISUALISATION OF DATA #################################
 ############################################################################
 
-############################################################################
-#################### Imputation OF DATA ####################################
-############################################################################
 
 ############################################################################
 #################### Analysis of main components (clustering)###############
