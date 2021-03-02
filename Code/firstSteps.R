@@ -23,6 +23,7 @@ library(gridExtra)
 library(naniar)
 library(UpSetR)
 library(corrplot)
+library(ggbiplot)
 
 source("./functions.R")
 
@@ -104,8 +105,25 @@ corrplot(correlations_int, method="color", col=col(200),
 #################### Analysis of main components (clustering)###############
 ############################################################################
 
+# in this section we explore multiple ways of analysing the principal components of the data.
+# During a PCA a linear transformation is performed. The data wil be transformed
+# to a new base. The base is the set of Eigenvectors. The corresponding Eigenvalues 
+# show the influence on the variance of the main component. The higher the eigenvalue, 
+# the more variance is explained by the principle component.
 
-# DBScan, Markov Chain Monte Carlo Clustering
+# Verfahren: DBScan, Markov Chain Monte Carlo Clustering
+
+data_int.pca <- prcomp(data_int, center = TRUE,scale. = TRUE)
+
+summary(data_int.pca)
+# 
+# library(devtools)
+# install_github("vqv/ggbiplot")
+# library(ggbiplot)
+# 
+ggbiplot(data_int.pca)
+
+# FRAGE: Now we have a pca, but what are the concrete next steps now? How do we handle categorial variables?
 
 ############################################################################
 #################### Choice of Methodes ####################################
