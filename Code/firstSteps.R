@@ -119,7 +119,7 @@ summary(data_int.pca)
 # 
 # library(devtools)
 # install_github("vqv/ggbiplot")
-# library(ggbiplot)
+library(ggbiplot)
 # 
 ggbiplot(data_int.pca)
 
