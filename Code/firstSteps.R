@@ -1,4 +1,4 @@
-
+library(caret)
 library(mlr3verse)
 library(shiny)
 library(R6)
@@ -23,81 +23,71 @@ library(gridExtra)
 library(naniar)
 library(UpSetR)
 library(corrplot)
-library(ggbiplot)
 
 source("./functions.R")
+source("./methodsForPredictions.R")
 
-data <- fread("./Data/house-prices-advanced-regression-techniques/train.csv")
-# data_test <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
+data_train <- fread("./Data/house-prices-advanced-regression-techniques/train.csv")
+data_test <- fread("./Data/house-prices-advanced-regression-techniques/test.csv")
+sampleSubmission <- fread("./Data/house-prices-advanced-regression-techniques/sample_submission.csv")
 
+data_test$SalePrice <- sampleSubmission$SalePrice
+
+testRows <- nrow(data_train)
+
+data <- rbind(data_train,data_test)
+
+numberOfBuckets <- 1000
 
 ############################################################################
-#################### VISUALISATION OF DATA #################################
+#################### Preprocess DATA #######################################
 ############################################################################
 
 visualizeMissingData(data)
 
-## get columns of type character with more than 10% missing data. 
-## In those cases create new category "ValueMissing"
+data <- preProcess(data)
 
-missing.values.percentage <- as.data.table(missinValuesPercentage(data))
-
-col_Missing_ge_10_pct <- missing.values.percentage[which(missing.values.percentage$pct >= 10 & missing.values.percentage$isna == T),]$key
-
-replaceNA(data)
-
-## get columns with missing values of type character and integer separately to prepare imputation
-
-data_classes <- sapply(data,class)
-
-col_replaced <- col_Missing_ge_10_pct[which(data_classes[col_Missing_ge_10_pct] == "character")]
-col_to_be_replaced <- setdiff(missing.values.percentage$key[which(missing.values.percentage$isna == TRUE)], col_replaced)
-
-col_int <- unique(names(data)[which(names(data) %in% names(data)[sapply(data,is.integer)])])
-col_char <- unique(names(data)[which(names(data) %in% names(data)[sapply(data,is.character)])])
+# str(data)
 
 
-## visualize patterns in missing data 
+data_train <- data[1:testRows,]
+data_test <- data[-(1:testRows),]
 
-data[,..col_to_be_replaced] %>% as_shadow_upset() %>% upset(,nset = length(names(data[,..col_to_be_replaced])))
-
-## After taking a look at the missing values it was decided to change all NA in coulmns concerning
-## garages, basements and Masonary Veneeers to "No garage", "No basement" and "No masonary veneer". 
-## All values of type integer will be set to 0, icluding "LotFrontage".
-
-col_garage <- c("GarageCond","GarageFinish","GarageQual","GarageType","GarageYrBlt")
-col_bsmt<- c("BsmtCond","BsmtFinType1","BsmtQual","BsmtExposure","BsmtFinType2")
-col_masVnr <- c("MasVnrArea","MasVnrType")
-col_electrical <- c("Electrical")
-col_LotFrontage <- c("LotFrontage")
-
-replaceNAinColumns(data,col_garage,"garage")
-replaceNAinColumns(data,col_bsmt,"basement")
-replaceNAinColumns(data,col_masVnr,"masonaryVeneer")
-replaceNAinColumns(data,col_electrical,"electrical")
-replaceNAinColumns(data,col_LotFrontage,"frontage")
-
-data_int <- data[,..col_int]
-data_char <- data[,..col_char]
-
-correlations_int <- cor(data_int)
-p_values_int <- cor.mtest(data_int)
-
-# visualize correlation matrix of integer values. Only highlight correlations with
-# p-value above 0.01. only usable after imputation of missing values
-
-col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
-corrplot(correlations_int, method="color", col=col(200),  
-         type="upper", order="hclust", 
-         
-         tl.col="black", tl.srt=45, #Text label color and rotation
-         # Combine with significance
-         p.mat = p_values_int, sig.level = 0.01, insig = "blank", 
-         # hide correlation coefficient on the principal diagonal
-         diag=FALSE 
+data_train$salePriceIndex <- as.numeric(cut2(data_train$SalePrice, g=numberOfBuckets))
+bucket = unique(data_train$salePriceIndex)
+buckets <- data.table(bucket = bucket, 
+                      minPrice = sapply(bucket,function(i) min(data_train[salePriceIndex == i,SalePrice])), 
+                      maxPrice = sapply(bucket,function(i) max(data_train[salePriceIndex == i,SalePrice]))
 )
+buckets <- buckets[order(bucket),]
+
+for (i in seq_len(length(buckets$bucket))){
+  if (i != 1){
+    buckets[bucket == i, minPrice := buckets[bucket == i-1, maxPrice]+1]
+  }
+}
+
+
+data_test[, salePriceIndex := 
+            sapply(data_test$SalePrice, function(i) 
+              
+              ifelse(min(buckets[,minPrice]) > i, 1, ifelse(max(buckets[,maxPrice]) < i, 100, buckets[minPrice<=i & maxPrice>=i, bucket]))
+            )
+]
+salePrices_train <- data_train[,.(SalePrice, Id, salePriceIndex )]
+salePrices_test <- data_test[,.(SalePrice, Id, salePriceIndex)]
+
+setnames(salePrices_train,c("SalePrice","salePriceIndex"), c("SalePrice_train","SalePriceIndex_train"))
+setnames(salePrices_test,c("SalePrice","salePriceIndex"), c("SalePrice_test","SalePriceIndex_test"))
+
+
+data_train_for_correlations <- data_train
+
+data_train[,SalePrice := NULL][,Id := NULL][, salePriceIndex := NULL]
+data_test[,SalePrice := NULL][,Id := NULL][, salePriceIndex := NULL]
+
 ############################################################################
-#################### VISUALISATION OF DATA #################################
+#################### Preprocess DATA #######################################
 ############################################################################
 
 
@@ -113,17 +103,64 @@ corrplot(correlations_int, method="color", col=col(200),
 
 # Verfahren: DBScan, Markov Chain Monte Carlo Clustering
 
-data_int.pca <- prcomp(data_int, center = TRUE,scale. = TRUE)
+############# correlation analysis #########################################
 
-summary(data_int.pca)
-# 
-# library(devtools)
-# install_github("vqv/ggbiplot")
-library(ggbiplot)
-# 
-ggbiplot(data_int.pca)
+# correlations <- cor(data_train_for_correlations)
+# p_values <- cor.mtest(data_train_for_correlations)
 
-# FRAGE: Now we have a pca, but what are the concrete next steps now? How do we handle categorial variables?
+
+
+# visualize correlation matrix of integer values. Only highlight correlations with
+# p-value above 0.01. only usable after imputation of missing values. After One Hot Encdoing the visual is useless.
+
+# col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+# corrplot(correlations, method="color", col=col(200),  
+#          type="upper", order="hclust", 
+#          
+#          tl.col="black", tl.srt=45, #Text label color and rotation
+#          # Combine with significance
+#          p.mat = p_values, sig.level = 0.01, insig = "blank", 
+#          # hide correlation coefficient on the principal diagonal
+#          diag=FALSE 
+# )
+
+
+############# correlation analysis #########################################
+
+
+################ PCA with decision tree ####################################################
+
+data_train.pca <- prcomp(data_train, center = TRUE, scale. = TRUE)
+
+summary(data_train.pca)
+
+plot(data_train.pca, type = "l")
+
+##at PC155 we explain more than 90% of variance
+finalPC <- 155
+
+decisionTreePCA <- pcaDecisionTree(SalePrice = salePrices_train, 
+                                   data_train.pca = data_train.pca, 
+                                   finalPC, 
+                                   data_test = data_test,
+                                   salePrices_test = salePrices_test
+                                   )
+decisionTreePCA_Prediction <- decisionTreePCA$prediction
+decisionTreePCA_mse <- decisionTreePCA$mse
+decisionTreePCA_mse
+
+
+# # library(devtools)
+# # install_github("vqv/ggbiplot")
+# 
+# library(ggbiplot)
+# ggbiplot(data_train.pca)
+################ PCA with decision tree ####################################################
+
+
+# 
+# 
+
 
 ############################################################################
 #################### Choice of Methodes ####################################
@@ -136,8 +173,8 @@ ggbiplot(data_int.pca)
 ############################################################################
 #################### Comparison of results #################################
 ############################################################################
-data <- cleanData(data)
 
 
 
-head(data)
+
+
