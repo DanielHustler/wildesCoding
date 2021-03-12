@@ -125,31 +125,65 @@ data_test[,SalePrice := NULL][,Id := NULL][, salePriceIndex := NULL]
 # )
 
 
+
 ############# correlation analysis #########################################
 
+############################################################################
+################## PCA #####################################################
+############################################################################
 
-################ PCA with decision tree ####################################################
 
 data_train.pca <- prcomp(data_train, center = TRUE, scale. = TRUE)
 
 summary(data_train.pca)
 
 plot(data_train.pca, type = "l")
-
 ##at PC155 we explain more than 90% of variance
-finalPC <- 155
+
+################ PCA with decision tree ####################################################
+
+finalPC_DecisionTree <- 7
 
 decisionTreePCA <- pcaDecisionTree(SalePrice = salePrices_train, 
                                    data_train.pca = data_train.pca, 
-                                   finalPC, 
+                                   finalPC = finalPC_DecisionTree, 
                                    data_test = data_test,
-                                   salePrices_test = salePrices_test
-                                   )
+                                   salePrices_test = salePrices_test,
+                                   method = "anova",
+                                   depth = 0.005
+                                     )
+
 decisionTreePCA_Prediction <- decisionTreePCA$prediction
 decisionTreePCA_mse <- decisionTreePCA$mse
 decisionTreePCA_mse
 
+################ PCA with decision tree ####################################################
 
+############# PCA with random forest ########################################################
+
+finalPC_RandomForest <- 7
+
+randomForestPCA <- pcaRandomForest(SalePrice = salePrices_train, 
+                                   data_train.pca = data_train.pca, 
+                                   finalPC = finalPC_RandomForest, 
+                                   data_test = data_test,
+                                   salePrices_test = salePrices_test,
+                                   method = "anova",
+                                   depth = 0.005,
+                                   numberOfTress = 100,
+                                   numberOfFeaturesUsedInTreeConstruction = 5,
+                                   importanceOfVariablesCalculated = TRUE
+                                     )
+
+
+
+
+randomForestPCA_Prediction <- randomForestPCA$prediction
+randomForestPCA_mse <- randomForestPCA$mse
+randomForestPCA_mse
+
+
+############# PCA with random forest ########################################################
 # # library(devtools)
 # # install_github("vqv/ggbiplot")
 # 
@@ -158,7 +192,7 @@ decisionTreePCA_mse
 ################ PCA with decision tree ####################################################
 
 
-# 
+# Radom Forest, Gradient Boosting with decision tree (xgBoost often used for trees)  
 # 
 
 
