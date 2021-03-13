@@ -150,7 +150,7 @@ decisionTreePCA <- pcaDecisionTree(SalePrice = salePrices_train,
                                    data_test = data_test,
                                    salePrices_test = salePrices_test,
                                    method = "anova",
-                                   depth = 0.005
+                                   depth = 0.001
                                      )
 
 decisionTreePCA_Prediction <- decisionTreePCA$prediction
@@ -161,17 +161,15 @@ decisionTreePCA_mse
 
 ############# PCA with random forest ########################################################
 
-finalPC_RandomForest <- 7
+finalPC_RandomForest <- 155
 
 randomForestPCA <- pcaRandomForest(SalePrice = salePrices_train, 
                                    data_train.pca = data_train.pca, 
                                    finalPC = finalPC_RandomForest, 
                                    data_test = data_test,
                                    salePrices_test = salePrices_test,
-                                   method = "anova",
-                                   depth = 0.005,
-                                   numberOfTress = 100,
-                                   numberOfFeaturesUsedInTreeConstruction = 5,
+                                   numberOfTrees = 500,
+                                   numberOfFeaturesUsedInTreeConstruction = 2,
                                    importanceOfVariablesCalculated = TRUE
                                      )
 
