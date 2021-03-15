@@ -37,7 +37,7 @@ testRows <- nrow(data_train)
 
 data <- rbind(data_train,data_test)
 
-numberOfBuckets <- 1000
+numberOfBuckets <- 100
 
 ############################################################################
 #################### Preprocess DATA #######################################
@@ -144,7 +144,8 @@ plot(data_train.pca, type = "l")
 
 finalPC_DecisionTree <- 7
 
-decisionTreePCA <- pcaDecisionTree(SalePrice = salePrices_train, 
+decisionTreePCA <- pcaDecisionTree(SalePrice = salePrices_train,
+                                   Bucket = TRUE,
                                    data_train.pca = data_train.pca, 
                                    finalPC = finalPC_DecisionTree, 
                                    data_test = data_test,
@@ -163,13 +164,14 @@ decisionTreePCA_mse
 
 finalPC_RandomForest <- 155
 
-randomForestPCA <- pcaRandomForest(SalePrice = salePrices_train, 
+randomForestPCA <- pcaRandomForest(SalePrice = salePrices_train,
+                                   Bucket = FALSE,
                                    data_train.pca = data_train.pca, 
                                    finalPC = finalPC_RandomForest, 
                                    data_test = data_test,
                                    salePrices_test = salePrices_test,
                                    numberOfTrees = 500,
-                                   numberOfFeaturesUsedInTreeConstruction = 2,
+                                   numberOfFeaturesUsedInTreeConstruction = 10,
                                    importanceOfVariablesCalculated = TRUE
                                      )
 
@@ -190,7 +192,7 @@ randomForestPCA_mse
 ################ PCA with decision tree ####################################################
 
 
-# Radom Forest, Gradient Boosting with decision tree (xgBoost often used for trees)  
+# Random Forest, Gradient Boosting with decision tree (xgBoost often used for trees)  
 # 
 
 
