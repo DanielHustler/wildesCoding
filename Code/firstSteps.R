@@ -171,7 +171,7 @@ randomForestPCA <- pcaRandomForest(SalePrice = salePrices_train,
                                    data_test = data_test,
                                    salePrices_test = salePrices_test,
                                    numberOfTrees = 500,
-                                   numberOfFeaturesUsedInTreeConstruction = 10,
+                                   numberOfFeaturesUsedInTreeConstruction = 3,
                                    importanceOfVariablesCalculated = TRUE
                                      )
 
